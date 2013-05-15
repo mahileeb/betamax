@@ -24,6 +24,7 @@ class BetamaxProxy extends AbstractHandler {
 	void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) {
 		def betamaxRequest = new ServletRequestAdapter(request)
 		try {
+            log.info("PROXY HIT: " + baseRequest)
 			def betamaxResponse = handlerChain.handle(betamaxRequest)
 			sendResponse(betamaxResponse, response)
 		} catch (HandlerException e) {

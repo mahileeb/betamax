@@ -6,6 +6,9 @@ import co.freeside.betamax.util.server.*
 import org.junit.Rule
 import spock.lang.*
 import wslite.rest.RESTClient
+
+import java.util.logging.Logger
+
 import static co.freeside.betamax.TapeMode.WRITE_ONLY
 import static co.freeside.betamax.proxy.jetty.BetamaxProxy.X_BETAMAX
 import static co.freeside.betamax.util.FileUtils.newTempDir

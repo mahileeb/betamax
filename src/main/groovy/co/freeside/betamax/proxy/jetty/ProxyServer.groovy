@@ -98,7 +98,7 @@ class ProxyServer extends SimpleServer implements HttpInterceptor {
 	}
 
 	private void overrideProxySettings() {
-		def proxyHost = InetAddress.localHost.hostAddress
+		def proxyHost = host
 		def nonProxyHosts = recorder.ignoreHosts as Set
 		if (recorder.ignoreLocalhost) {
 			nonProxyHosts.addAll(Network.localAddresses)

@@ -16,99 +16,110 @@
 
 package co.freeside.betamax.proxy.jetty
 
-import java.util.concurrent.CountDownLatch
-import java.util.logging.Logger
-import org.eclipse.jetty.server.*
+import org.eclipse.jetty.server.Handler
+import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.util.component.AbstractLifeCycle.AbstractLifeCycleListener
 import org.eclipse.jetty.util.component.LifeCycle
 
+import java.util.concurrent.CountDownLatch
+import java.util.logging.Logger
+
 class SimpleServer extends AbstractLifeCycleListener {
 
-	static final int DEFAULT_PORT = 5000
+    static final int DEFAULT_PORT = 5000
+    static boolean localhostWarning
 
-	final String host
-	protected int port
-	private Server server
-	private CountDownLatch startedLatch
-	private CountDownLatch stoppedLatch
+    final String host
+    protected int port
+    private Server server
+    private CountDownLatch startedLatch
+    private CountDownLatch stoppedLatch
 
-	private static final log = Logger.getLogger(getClass().name)
+    private static final log = Logger.getLogger(getClass().name)
 
-	SimpleServer() {
-		this(DEFAULT_PORT)
-	}
+    SimpleServer() {
+        this(DEFAULT_PORT)
+    }
 
-	SimpleServer(int port) {
-		// if there is no network connection we need to connect to the server via hostname rather than IP. At least this
-		// is true on a Mac. Suspect it may be OS dependent. I should really make an effort to understand this but this
-		// workaround means the proxy seems to operate correctly with or without a network connection. The weird thing
-		// is that the hostName _doesn't_ work when there _is_ a network connection.
-		def localAddress = InetAddress.localHost
-		if (localAddress.loopbackAddress) {
-			log.info "local address is loopback, using hostname $localAddress.hostName"
-			host = localAddress.hostName
-		} else {
-			host = localAddress.hostAddress
-		}
-		this.port = port
-	}
+    SimpleServer(int port) {
+        // if there is no network connection we need to connect to the server via hostname rather than IP. At least this
+        // is true on a Mac. Suspect it may be OS dependent. I should really make an effort to understand this but this
+        // workaround means the proxy seems to operate correctly with or without a network connection. The weird thing
+        // is that the hostName _doesn't_ work when there _is_ a network connection.
+        try {
+            def localAddress = InetAddress.localHost
+            if (localAddress.loopbackAddress) {
+                log.info "local address is loopback, using hostname $localAddress.hostName"
+                host = localAddress.hostName
+            } else {
+                host = localAddress.hostAddress
+            }
+        } catch (Throwable e) {
+            host = "localhost"
+            if(!localhostWarning){
+                localhostWarning = true
+                log.warning "Unable to resolve hostname, will use $host"
+            }
+        }
+        this.port = port
+    }
 
-	String getUrl() {
-		"http://$host:$port/"
-	}
+    String getUrl() {
+        "http://$host:$port/"
+    }
 
-	void start(Class<? extends Handler> handlerClass) {
-		start handlerClass.newInstance()
-	}
+    void start(Class<? extends Handler> handlerClass) {
+        start handlerClass.newInstance()
+    }
 
-	void start(Handler handler) {
-		startedLatch = new CountDownLatch(1)
-		stoppedLatch = new CountDownLatch(1)
+    void start(Handler handler) {
+        startedLatch = new CountDownLatch(1)
+        stoppedLatch = new CountDownLatch(1)
 
-		server = createServer(port)
-		server.handler = handler
-		server.addLifeCycleListener(this)
-		server.start()
+        server = createServer(port)
+        server.handler = handler
+        server.addLifeCycleListener(this)
+        server.start()
 
-		startedLatch.await()
-	}
+        startedLatch.await()
+    }
 
-	void stop() {
-		if (server) {
-			server.stop()
-			stoppedLatch.await()
-		}
-	}
+    void stop() {
+        if (server) {
+            server.stop()
+            stoppedLatch.await()
+        }
+    }
 
-	void setPort(int port) {
-		if (running) {
-			throw new IllegalStateException('Cannot set port once the server is already started')
-		}
-		this.port = port
-	}
+    void setPort(int port) {
+        if (running) {
+            throw new IllegalStateException('Cannot set port once the server is already started')
+        }
+        this.port = port
+    }
 
-	int getPort() {
-		port
-	}
+    int getPort() {
+        port
+    }
 
-	boolean isRunning() {
-		startedLatch?.count == 0 && stoppedLatch?.count > 0
-	}
+    boolean isRunning() {
+        startedLatch?.count == 0 && stoppedLatch?.count > 0
+    }
 
-	@Override
-	void lifeCycleStarted(LifeCycle event) {
-		log.fine 'started...'
-		startedLatch.countDown()
-	}
+    @Override
+    void lifeCycleStarted(LifeCycle event) {
+        log.fine 'started...'
+        startedLatch.countDown()
+    }
 
-	@Override
-	void lifeCycleStopped(LifeCycle event) {
-		log.fine 'stopped...'
-		stoppedLatch.countDown()
-	}
+    @Override
+    void lifeCycleStopped(LifeCycle event) {
+        log.fine 'stopped...'
+        stoppedLatch.countDown()
+    }
 
-	protected Server createServer(int port) {
-		new Server(port)
+    protected Server createServer(int port) {
+        new Server(new InetSocketAddress("0.0.0.0", port));
     }
 
 }
